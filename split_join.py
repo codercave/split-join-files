@@ -1,5 +1,5 @@
-from sys import argv
 from pathlib import Path
+import click
 
 
 read_buffer_size = 1024
@@ -26,6 +26,7 @@ def _chunk_file(file, extension):
                     break
 
 
+@click.command(name='split', help='split a file into chunks')
 def _split():
     p = Path.cwd()
     file_to_split = None
@@ -39,6 +40,7 @@ def _split():
             _chunk_file(file, file_to_split.suffix)
 
 
+@click.command(name='join', help='join pieces so that you obtain your original file')
 def _join():
     p = Path.cwd()
 
@@ -56,16 +58,13 @@ def _join():
                     file.write(bfr)
 
 
+@click.group()
 def main():
-    
-    command = argv[1]
+    print('split-join files')
 
-    if command.lower() == 'split':
-        _split()
-    elif command.lower() == 'join':
-        _join()
-    else:
-        print('use either split or join')
+
+main.add_command(_split)
+main.add_command(_join)
 
 
 if __name__ == '__main__':

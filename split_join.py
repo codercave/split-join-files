@@ -3,15 +3,18 @@ import click
 
 
 read_buffer_size = 1024
-chunk_size = 1024 * 100000
 
 
-def _chunk_file(file, extension):
+def _chunk_file(file, extension, destination, size):
+
+    d = Path(destination)
+    d.mkdir(parents=True, exist_ok=True)
+
     current_chunk_size = 0
     current_chunk = 1
     done_reading = False
     while not done_reading:
-        with open(f'{current_chunk}{extension}.chk', 'ab') as chunk:
+        with open(f'{destination}/{current_chunk}{extension}.chk', 'ab') as chunk:
             while True:
                 bfr = file.read(read_buffer_size)
                 if not bfr:
@@ -20,35 +23,38 @@ def _chunk_file(file, extension):
 
                 chunk.write(bfr)
                 current_chunk_size += len(bfr)
-                if current_chunk_size + read_buffer_size > chunk_size:
+                if current_chunk_size + read_buffer_size > size:
                     current_chunk += 1
                     current_chunk_size = 0
                     break
 
 
 @click.command(name='split', help='split a file into chunks')
-def _split():
-    p = Path.cwd()
-    file_to_split = None
-    for f in p.iterdir():
-        if f.is_file() and f.name[0] != '.':
-            file_to_split = f
-            break
-
-    if file_to_split:
-        with open(file_to_split, 'rb') as file:
-            _chunk_file(file, file_to_split.suffix)
+@click.option('--file', help='path to the file that has to be split')
+@click.option('--destination', default='.', help='path of the directory that will contain the chunks')
+@click.option('--size', default=100000000, help='max size of a chunk')
+def _split(file, destination, size):
+    f = Path(file)
+    
+    if f.exists():
+        with open(f, 'rb') as file_stream:
+            _chunk_file(file_stream, f.suffix, destination, size)
 
 
 @click.command(name='join', help='join pieces so that you obtain your original file')
-def _join():
-    p = Path.cwd()
+@click.option('--source-dir', default='.', help='directory of where the chunks are')
+@click.option('--output', default='join', help='file name of the re-joined file')
+def _join(source_dir, output):
+    p = Path(source_dir)
+    if not p.exists():
+        print('source folder not valid')
+        return
 
     chunks = list(p.rglob('*.chk'))
     chunks.sort()
     extension = chunks[0].suffixes[0]
 
-    with open(f'join{extension}', 'ab') as file:
+    with open(f'{output}{extension}', 'ab') as file:
         for chunk in chunks:   
             with open(chunk, 'rb') as piece:
                 while True:

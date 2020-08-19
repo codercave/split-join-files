@@ -1,5 +1,6 @@
 from pathlib import Path
 import click
+import questionary
 
 
 read_buffer_size = 1024
@@ -30,10 +31,38 @@ def _chunk_file(file, extension, destination, size):
 
 
 @click.command(name='split', help='split a file into chunks')
+@click.option('-i', '--interactive', is_flag=True, help='to enable interactive mode')
 @click.option('--file', help='path to the file that has to be split')
 @click.option('--destination', default='.', help='path of the directory that will contain the chunks')
 @click.option('--size', default=100000000, help='max size of a chunk')
-def _split(file, destination, size):
+def _split(interactive, file, destination, size):
+
+    if not file and not interactive:
+        print('file not valid')
+        return
+    
+    if not file and interactive:
+        p = Path.cwd()
+        files = []
+        for f in p.iterdir():
+            if f.is_file():
+                files.append(f.name)
+        file_to_split = questionary.select('which file do you want to split?', choices=files).ask()
+        file = Path(file_to_split)
+
+    if interactive:
+        destination = questionary.text('name the destination folder').ask()
+        support = questionary.select('what chunk size do you desire?', 
+        choices=['floppy', 'iomega_zip', 'cd', 'dvd']).ask()
+        if support == 'floppy':
+            size = 1400000
+        elif support == 'iomega_zip':
+            size = 100000000
+        elif support == 'cd':
+            size = 700000000
+        elif support == 'dvd':
+            size = 4500000000
+
     f = Path(file)
     
     if f.exists():
